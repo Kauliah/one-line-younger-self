@@ -15,13 +15,19 @@ function fail(message: string): never {
 }
 
 function validate(line: string): void {
-  if (line.length < 1 || line.length > 200) {
-    fail(`line must be 1-200 characters, got ${line.length}`);
+  // Count characters as Unicode code points (spread into code points),
+  // not UTF-16 code units, so a line with astral characters is measured
+  // the way the scorer counts characters.
+  const length = [...line].length;
+  if (length < 1 || length > 200) {
+    fail(`line must be 1-200 characters, got ${length}`);
   }
   if (line !== line.trim()) {
     fail("line must not have leading or trailing whitespace");
   }
-  if (/[\r\n]/.test(line)) {
+  // Also reject U+2028 LINE SEPARATOR and U+2029 PARAGRAPH SEPARATOR,
+  // which are line breaks that /[\r\n]/ does not catch.
+  if (/[\r\n\u2028\u2029]/.test(line)) {
     fail("line must be a single line");
   }
   for (const ch of line) {
@@ -48,7 +54,7 @@ function main(): void {
   if (Buffer.byteLength(readBack, "utf8") !== Buffer.byteLength(LINE, "utf8")) {
     fail("read-back byte length differs from the line");
   }
-  console.log(`wrote ${LINE.length} characters to ${outPath}`);
+  console.log(`wrote ${[...LINE].length} characters to ${outPath}`);
   console.log(LINE);
 }
 
